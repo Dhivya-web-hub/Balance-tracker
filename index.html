@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horizon — Work/Life Balance Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#262432;
+    --slate:#6E6B7A;
+    --mist:#EDF0EC;
+    --card:#FFFFFF;
+    --line:#DEE4DF;
+    --teal:#2F6F6B;      /* work */
+    --teal-soft:#DCEAE8;
+    --rose:#E2637A;      /* personal */
+    --rose-soft:#FBE3E7;
+    --indigo:#5B5F97;    /* sleep */
+    --indigo-soft:#E5E5F2;
+    --amber:#C98A2E;     /* caution */
+    --amber-soft:#F5E7CF;
+    --danger:#C1503F;
+    --radius:14px;
+    --shadow: 0 1px 2px rgba(38,36,50,0.04), 0 8px 24px -12px rgba(38,36,50,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--mist);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding:32px 16px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  /* ---------- Header ---------- */
+  header.top{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom:28px; gap:16px; flex-wrap:wrap;
+  }
+  .brand h1{
+    font-family:'Newsreader', serif;
+    font-weight:500; font-size:34px; letter-spacing:-0.01em;
+    margin:0 0 2px;
+  }
+  .brand p{margin:0; color:var(--slate); font-size:14px;}
+  .streak{
+    text-align:right; font-family:'JetBrains Mono', monospace;
+  }
+  .streak .num{font-size:26px; font-weight:500; color:var(--teal); line-height:1;}
+  .streak .label{font-size:11px; color:var(--slate); text-transform:uppercase; letter-spacing:.06em;}
+
+  /* ---------- Card shell ---------- */
+  .card{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:24px; margin-bottom:20px; border:1px solid var(--line);
+  }
+  .card h2{
+    font-family:'Newsreader', serif; font-weight:500; font-size:19px; margin:0 0 4px;
+  }
+  .card .sub{color:var(--slate); font-size:13px; margin:0 0 18px;}
+
+  .entry-head{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;}
+  .entry-date-field{flex:0 0 auto;}
+  .entry-date-field span{font-size:12px; color:var(--slate); font-weight:500; display:block; margin-bottom:6px;}
+  .entry-date-field input{width:150px;}
+  .backfill-note{
+    font-size:12.5px; color:var(--amber); background:var(--amber-soft);
+    border-radius:8px; padding:8px 12px; margin:-6px 0 16px; display:none;
+  }
+  .backfill-note.show{display:block;}
+
+  .hours-total{
+    font-size:12.5px; color:var(--slate); font-family:'JetBrains Mono', monospace;
+    margin:-6px 0 4px;
+  }
+  .hours-total.over{color:var(--danger); font-weight:600;}
+  .hours-error{
+    font-size:12.5px; color:var(--danger); background:var(--rose-soft);
+    border-radius:8px; padding:8px 12px; margin:0 0 16px; display:none;
+  }
+  .hours-error.show{display:block;}
+
+  select#avgRange{
+    font-family:'Inter', sans-serif; font-size:13px; color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:#FCFDFC;
+    width:150px; cursor:pointer;
+  }
+  .avg-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:16px 0;}
+  @media (max-width:560px){.avg-stats{grid-template-columns:1fr 1fr;}}
+  .avg-stat{
+    border:1px solid var(--line); border-radius:10px; padding:12px; background:#FCFDFC; text-align:center;
+  }
+  .avg-stat .tag{justify-content:center; margin-bottom:6px;}
+  .avg-stat .val{font-family:'JetBrains Mono', monospace; font-size:20px; font-weight:500;}
+  .avg-row{display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+  .avg-mood{font-size:13px; color:var(--slate);}
+  .avg-mood .emoji{font-size:18px; margin-left:4px;}
+
+  /* ---------- Balance scale (signature element) ---------- */
+  .scale-row{display:flex; align-items:center; gap:22px; flex-wrap:wrap;}
+  .scale-svg{flex:0 0 auto;}
+  .scale-status{flex:1; min-width:180px;}
+  .scale-status .pill{
+    display:inline-block; padding:5px 12px; border-radius:999px;
+    font-size:12px; font-weight:600; letter-spacing:.02em; margin-bottom:8px;
+  }
+  .pill.balanced{background:var(--teal-soft); color:var(--teal);}
+  .pill.leaning{background:var(--amber-soft); color:var(--amber);}
+  .pill.overworked{background:var(--rose-soft); color:var(--rose);}
+  .pill.empty{background:#EEE; color:var(--slate);}
+  .scale-status p{margin:0; font-size:14px; color:var(--slate); line-height:1.5;}
+  .beam{ transform-origin: 100px 40px; transition: transform 0.8s cubic-bezier(.34,1.56,.64,1); }
+
+  /* ---------- Form ---------- */
+  .field-grid{display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom:16px;}
+  @media (max-width:560px){.field-grid{grid-template-columns:1fr 1fr;}}
+  label.field{display:flex; flex-direction:column; gap:6px; font-size:12.5px; color:var(--slate); font-weight:500;}
+  label.field .tag{display:flex; align-items:center; gap:6px;}
+  .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
+  .dot.work{background:var(--teal);} .dot.personal{background:var(--rose);} .dot.sleep{background:var(--indigo);}
+  input[type=number], input[type=time], textarea{
+    font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:9px 10px; background:#FCFDFC;
+    width:100%;
+  }
+  textarea{font-family:'Inter', sans-serif; resize:vertical; min-height:56px;}
+  input:focus, textarea:focus, button:focus-visible{
+    outline:2px solid var(--teal); outline-offset:1px;
+  }
+
+  .mood-row{display:flex; gap:8px; margin-bottom:16px;}
+  .mood-btn{
+    flex:1; padding:10px 0; border-radius:10px; border:1px solid var(--line); background:#FCFDFC;
+    font-size:20px; cursor:pointer; transition:all .15s ease;
+  }
+  .mood-btn:hover{border-color:var(--teal);}
+  .mood-btn.selected{background:var(--teal-soft); border-color:var(--teal); transform:translateY(-2px);}
+
+  .row-inline{display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px;}
+  .row-inline label.field{flex:1; min-width:120px;}
+  .note-field{margin-bottom:18px;}
+
+  button.primary{
+    background:var(--teal); color:#fff; border:none; border-radius:9px;
+    padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  button.primary:hover{background:#265F5C;}
+  button.ghost{
+    background:transparent; color:var(--slate); border:1px solid var(--line); border-radius:9px;
+    padding:10px 16px; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif;
+  }
+  button.ghost:hover{border-color:var(--slate);}
+  .save-row{display:flex; align-items:center; gap:12px;}
+  .save-msg{font-size:13px; color:var(--teal); opacity:0; transition:opacity .3s;}
+  .save-msg.show{opacity:1;}
+
+  /* ---------- Reminder settings ---------- */
+  .reminder-row{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+  .reminder-row input[type=time]{width:110px;}
+  .toggle-status{font-size:12.5px; color:var(--slate);}
+  .toggle-status.on{color:var(--teal); font-weight:600;}
+
+  /* ---------- Horizon history ---------- */
+  .horizon-list{display:flex; flex-direction:column; gap:10px;}
+  .horizon-row{display:grid; grid-template-columns:70px 1fr 28px; align-items:center; gap:12px;}
+  .horizon-row .date{font-size:12px; color:var(--slate); font-family:'JetBrains Mono', monospace;}
+  .horizon-bar{
+    height:14px; border-radius:7px; overflow:hidden; display:flex; background:#EEE;
+    border:1px solid var(--line);
+  }
+  .horizon-bar .seg{height:100%;}
+  .horizon-row .mood{font-size:16px; text-align:center;}
+  .empty-state{
+    text-align:center; padding:30px 10px; color:var(--slate); font-size:13.5px;
+  }
+  .empty-state .big{font-size:28px; margin-bottom:6px;}
+
+  .suggestion-list{display:flex; flex-direction:column; gap:12px;}
+  .suggestion-item{
+    display:flex; gap:12px; align-items:flex-start; padding:12px 14px;
+    border-radius:10px; border:1px solid var(--line); background:#FCFDFC;
+  }
+  .sugg-icon{
+    flex:0 0 26px; width:26px; height:26px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; color:#fff;
+  }
+  .sugg-icon.up{background:var(--teal);}
+  .sugg-icon.down{background:var(--rose);}
+  .sugg-icon.flat{background:var(--slate);}
+  .sugg-icon.info{background:var(--indigo);}
+  .suggestion-item p{margin:0; font-size:13.5px; color:var(--ink); line-height:1.5;}
+  .suggestion-item p.tip{color:var(--slate); font-size:12.5px; margin-top:4px;}
+
+  .legend{display:flex; gap:16px; margin-top:14px; flex-wrap:wrap;}
+  .legend span{font-size:12px; color:var(--slate); display:flex; align-items:center; gap:6px;}
+
+  footer.reset{text-align:center; margin-top:24px;}
+  footer.reset button{font-size:12px; color:var(--slate); background:none; border:none; text-decoration:underline; cursor:pointer;}
+
+  .loading-line{color:var(--slate); font-size:13px; padding:6px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>Horizon</h1>
+      <p>A quiet daily check-in on how your day is split.</p>
+    </div>
+    <div class="streak">
+      <div class="num" id="streakNum">0</div>
+      <div class="label">day streak</div>
+    </div>
+  </header>
+
+  <!-- Balance scale -->
+  <div class="card">
+    <h2 id="balanceHeading">Today's balance</h2>
+    <p class="sub" id="todayDateLabel">—</p>
+    <div class="scale-row">
+      <svg class="scale-svg" width="200" height="90" viewBox="0 0 200 90">
+        <line x1="100" y1="10" x2="100" y2="40" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="100" cy="8" r="4" fill="var(--ink)"/>
+        <g class="beam" id="beam">
+          <line x1="20" y1="40" x2="180" y2="40" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+          <line x1="20" y1="40" x2="20" y2="58" stroke="var(--slate)" stroke-width="2"/>
+          <line x1="180" y1="40" x2="180" y2="58" stroke="var(--slate)" stroke-width="2"/>
+          <path d="M4 58 Q20 78 36 58 Z" fill="var(--teal)" id="panLeft"/>
+          <path d="M164 58 Q180 78 196 58 Z" fill="var(--rose)" id="panRight"/>
+        </g>
+        <text x="20" y="90" font-size="10" fill="var(--slate)" text-anchor="middle" font-family="Inter">work</text>
+        <text x="180" y="90" font-size="10" fill="var(--slate)" text-anchor="middle" font-family="Inter">life</text>
+      </svg>
+      <div class="scale-status">
+        <span class="pill empty" id="statusPill">Not logged yet</span>
+        <p id="statusText">Log today's hours below to see where things stand.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Average balance -->
+  <div class="card">
+    <div class="entry-head">
+      <div>
+        <h2>Average balance</h2>
+        <p class="sub" id="avgSub">Across your logged days.</p>
+      </div>
+      <label class="field entry-date-field">
+        <span>Range</span>
+        <select id="avgRange">
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="all">All time</option>
+        </select>
+      </label>
+    </div>
+    <div id="avgContent"></div>
+  </div>
+
+  <!-- Suggestions -->
+  <div class="card" id="suggestionsCard">
+    <h2>How you've been trending</h2>
+    <p class="sub" id="suggestionsSub">Log a few more days to see personalized suggestions here.</p>
+    <div class="suggestion-list" id="suggestionList"></div>
+  </div>
+
+  <!-- Entry form -->
+  <div class="card">
+    <div class="entry-head">
+      <div>
+        <h2 id="entryHeading">Log today</h2>
+        <p class="sub" id="entrySub">Rough numbers are fine — this isn't a timesheet.</p>
+      </div>
+      <label class="field entry-date-field">
+        <span>Date</span>
+        <input type="date" id="entryDate">
+      </label>
+    </div>
+    <p class="backfill-note" id="backfillNote"></p>
+
+    <div class="field-grid">
+      <label class="field">
+        <span class="tag"><span class="dot work"></span>Work hours</span>
+        <input type="number" id="inputWork" min="0" max="16" step="0.5" placeholder="8">
+      </label>
+      <label class="field">
+        <span class="tag"><span class="dot personal"></span>Personal hours</span>
+        <input type="number" id="inputPersonal" min="0" max="16" step="0.5" placeholder="4">
+      </label>
+      <label class="field">
+        <span class="tag"><span class="dot sleep"></span>Sleep hours</span>
+        <input type="number" id="inputSleep" min="0" max="14" step="0.5" placeholder="7.5">
+      </label>
+    </div>
+    <p class="hours-total" id="hoursTotal">0 / 24 hours logged</p>
+    <p class="hours-error" id="hoursError">That's more than 24 hours — adjust the numbers so they fit in a day.</p>
+
+    <label class="field" style="margin-bottom:10px;">Mood today</label>
+    <div class="mood-row" id="moodRow">
+      <button class="mood-btn" data-mood="1">😞</button>
+      <button class="mood-btn" data-mood="2">🙁</button>
+      <button class="mood-btn" data-mood="3">😐</button>
+      <button class="mood-btn" data-mood="4">🙂</button>
+      <button class="mood-btn" data-mood="5">😄</button>
+    </div>
+
+    <div class="row-inline">
+      <label class="field">
+        Exercise (minutes)
+        <input type="number" id="inputExercise" min="0" max="300" step="5" placeholder="0">
+      </label>
+    </div>
+
+    <label class="field note-field">
+      Quick note <span style="font-weight:400;">(optional)</span>
+      <textarea id="inputNote" maxlength="180" placeholder="What made today good or hard?"></textarea>
+    </label>
+
+    <div class="save-row">
+      <button class="primary" id="saveBtn">Save today's entry</button>
+      <span class="save-msg" id="saveMsg">Saved ✓</span>
+    </div>
+  </div>
+
+  <!-- Reminder settings -->
+  <div class="card">
+    <h2>Daily reminder</h2>
+    <p class="sub">A browser notification to nudge you if you haven't logged yet. Keep this tab open for reminders to fire.</p>
+    <div class="reminder-row">
+      <input type="time" id="reminderTime" value="18:00">
+      <button class="ghost" id="notifyBtn">Turn on reminders</button>
+      <span class="toggle-status" id="notifyStatus">Reminders are off</span>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card">
+    <h2>Your last 14 days</h2>
+    <p class="sub">Each bar is one day — work, personal time, and sleep, side by side.</p>
+    <div id="historyContainer">
+      <div class="loading-line">Loading your history…</div>
+    </div>
+    <div class="legend">
+      <span><span class="dot work"></span>Work</span>
+      <span><span class="dot personal"></span>Personal</span>
+      <span><span class="dot sleep"></span>Sleep</span>
+    </div>
+  </div>
+
+  <footer class="reset">
+    <button id="resetBtn">Clear all my data</button>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const ENTRIES_KEY = 'entries';
+  const SETTINGS_KEY = 'settings';
+  let entries = {};
+  let settings = { reminderTime: '18:00', notificationsEnabled: false, lastNotifiedDate: null };
+  let selectedMood = null;
+  let selectedEntryDate = null; // the date the entry form is currently editing
+
+  const todayStr = () => {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  };
+  const fmtDateLabel = (dstr) => {
+    const d = new Date(dstr + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+  };
+  const shortLabel = (dstr) => {
+    const d = new Date(dstr + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  };
+
+  async function loadData(){
+    try{
+      const res = await window.storage.get(ENTRIES_KEY, false);
+      entries = res ? JSON.parse(res.value) : {};
+    }catch(e){ entries = {}; }
+    try{
+      const res = await window.storage.get(SETTINGS_KEY, false);
+      settings = res ? JSON.parse(res.value) : settings;
+    }catch(e){ /* keep defaults */ }
+  }
+
+  async function saveEntries(){
+    try{ await window.storage.set(ENTRIES_KEY, JSON.stringify(entries), false); }
+    catch(e){ console.error('Could not save entries', e); }
+  }
+  async function saveSettings(){
+    try{ await window.storage.set(SETTINGS_KEY, JSON.stringify(settings), false); }
+    catch(e){ console.error('Could not save settings', e); }
+  }
+
+  function computeStatus(entry){
+    if(!entry) return { key:'empty', label:'Not logged yet', text:"Log today's hours below to see where things stand." };
+    const { work=0, sleep=0 } = entry;
+    if(work <= 8 && sleep >= 7) return { key:'balanced', label:'In balance', text:'Solid split today — work stayed contained and sleep was covered.' };
+    if(work <= 10 && sleep >= 6) return { key:'leaning', label:'Leaning long', text:'A longer work day than usual. Worth watching if it repeats tomorrow.' };
+    return { key:'overworked', label:'Overworked', text:'Work crowded out rest today. Consider protecting tomorrow evening.' };
+  }
+
+  function tiltForEntry(entry){
+    if(!entry) return 0;
+    const work = entry.work||0, life = (entry.personal||0)+(entry.sleep||0);
+    const diff = work - life; // positive = work heavier
+    const angle = Math.max(-18, Math.min(18, diff * 2.2));
+    return angle;
+  }
+
+  function renderAverages(){
+    const rangeVal = document.getElementById('avgRange').value;
+    let dates = Object.keys(entries).sort();
+    if(rangeVal !== 'all'){
+      dates = dates.slice(-parseInt(rangeVal, 10));
+    }
+    const sub = document.getElementById('avgSub');
+    const content = document.getElementById('avgContent');
+
+    if(dates.length === 0){
+      sub.textContent = 'Across your logged days.';
+      content.innerHTML = '<div class="empty-state"><div class="big">📊</div>No entries yet — log a few days to see your averages.</div>';
+      return;
+    }
+
+    const rangeLabel = rangeVal === 'all' ? 'all ' + dates.length + ' logged day' + (dates.length===1?'':'s')
+      : 'the last ' + dates.length + ' logged day' + (dates.length===1?'':'s');
+    sub.textContent = 'Averaged over ' + rangeLabel + '.';
+
+    const workAvg = avg(dates.map(d=>entries[d].work||0));
+    const personalAvg = avg(dates.map(d=>entries[d].personal||0));
+    const sleepAvg = avg(dates.map(d=>entries[d].sleep||0));
+    const moods = dates.map(d=>entries[d].mood).filter(m=>m!=null);
+    const moodAvg = moods.length ? avg(moods) : null;
+    const moodEmoji = {1:'😞',2:'🙁',3:'😐',4:'🙂',5:'😄'};
+    const moodRounded = moodAvg ? Math.round(moodAvg) : null;
+
+    const status = computeStatus({ work: workAvg, sleep: sleepAvg });
+
+    const fmt = (n)=> n.toFixed(1).replace(/\.0$/,'');
+
+    content.innerHTML =
+      '<div class="avg-stats">'
+        + '<div class="avg-stat"><div class="tag" style="display:flex"><span class="dot work"></span></div><div class="val">' + fmt(workAvg) + 'h</div><div class="sub" style="margin:2px 0 0;font-size:11.5px;">Work</div></div>'
+        + '<div class="avg-stat"><div class="tag" style="display:flex"><span class="dot personal"></span></div><div class="val">' + fmt(personalAvg) + 'h</div><div class="sub" style="margin:2px 0 0;font-size:11.5px;">Personal</div></div>'
+        + '<div class="avg-stat"><div class="tag" style="display:flex"><span class="dot sleep"></span></div><div class="val">' + fmt(sleepAvg) + 'h</div><div class="sub" style="margin:2px 0 0;font-size:11.5px;">Sleep</div></div>'
+      + '</div>'
+      + '<div class="avg-row">'
+        + '<span class="pill ' + status.key + '">' + status.label + '</span>'
+        + (moodRounded ? '<span class="avg-mood">Average mood<span class="emoji">' + moodEmoji[moodRounded] + '</span></span>' : '')
+      + '</div>';
+  }
+
+  function renderBalanceCard(dstr){
+    dstr = dstr || todayStr();
+    const isToday = dstr === todayStr();
+    document.getElementById('balanceHeading').textContent = isToday ? "Today's balance" : 'Balance for that day';
+    document.getElementById('todayDateLabel').textContent = fmtDateLabel(dstr);
+    const entry = entries[dstr];
+    const status = computeStatus(entry);
+    const pill = document.getElementById('statusPill');
+    pill.className = 'pill ' + status.key;
+    pill.textContent = status.label;
+    document.getElementById('statusText').textContent = status.text;
+    const angle = tiltForEntry(entry);
+    document.getElementById('beam').style.transform = 'rotate(' + angle + 'deg)';
+  }
+
+  function loadEntryFormForDate(dstr){
+    selectedEntryDate = dstr;
+    document.getElementById('entryDate').value = dstr;
+    renderBalanceCard(dstr);
+    const entry = entries[dstr];
+    const isToday = dstr === todayStr();
+
+    const heading = document.getElementById('entryHeading');
+    const sub = document.getElementById('entrySub');
+    const note = document.getElementById('backfillNote');
+
+    if(isToday){
+      heading.textContent = 'Log today';
+      sub.textContent = "Rough numbers are fine — this isn't a timesheet.";
+      note.classList.remove('show');
+    } else {
+      heading.textContent = 'Log for ' + fmtDateLabel(dstr);
+      sub.textContent = 'Filling in a missed day — this updates your history and streak.';
+      note.textContent = entry
+        ? "You've already logged this day — editing will overwrite it."
+        : "This is a past day with no entry yet.";
+      note.classList.add('show');
+    }
+
+    document.getElementById('inputWork').value = entry?.work ?? '';
+    document.getElementById('inputPersonal').value = entry?.personal ?? '';
+    document.getElementById('inputSleep').value = entry?.sleep ?? '';
+    document.getElementById('inputExercise').value = entry?.exercise ?? '';
+    document.getElementById('inputNote').value = entry?.note ?? '';
+    selectedMood = entry?.mood ?? null;
+    document.querySelectorAll('.mood-btn').forEach(b=>{
+      b.classList.toggle('selected', Number(b.dataset.mood) === selectedMood);
+    });
+    updateHoursTotal();
+  }
+
+  function renderStreak(){
+    let streak = 0;
+    let cursor = new Date();
+    // if today isn't logged yet, start counting from yesterday
+    if(!entries[todayStr()]) cursor.setDate(cursor.getDate()-1);
+    while(true){
+      const dstr = cursor.getFullYear() + '-' + String(cursor.getMonth()+1).padStart(2,'0') + '-' + String(cursor.getDate()).padStart(2,'0');
+      if(entries[dstr]){ streak++; cursor.setDate(cursor.getDate()-1); }
+      else break;
+    }
+    document.getElementById('streakNum').textContent = streak;
+  }
+
+  function renderHistory(){
+    const container = document.getElementById('historyContainer');
+    const dates = Object.keys(entries).sort().reverse().slice(0,14);
+    if(dates.length === 0){
+      container.innerHTML = '<div class="empty-state"><div class="big">🌅</div>No entries yet — log today to start your horizon.</div>';
+      return;
+    }
+    const moodEmoji = {1:'😞',2:'🙁',3:'😐',4:'🙂',5:'😄'};
+    container.innerHTML = '<div class="horizon-list">' + dates.map(d=>{
+      const e = entries[d];
+      const total = Math.max(24, (e.work||0)+(e.personal||0)+(e.sleep||0));
+      const workPct = ((e.work||0)/total*100).toFixed(1);
+      const persPct = ((e.personal||0)/total*100).toFixed(1);
+      const sleepPct = ((e.sleep||0)/total*100).toFixed(1);
+      return '<div class="horizon-row">'
+        + '<span class="date">'+shortLabel(d)+'</span>'
+        + '<div class="horizon-bar">'
+          + '<div class="seg" style="width:'+workPct+'%;background:var(--teal)"></div>'
+          + '<div class="seg" style="width:'+persPct+'%;background:var(--rose)"></div>'
+          + '<div class="seg" style="width:'+sleepPct+'%;background:var(--indigo)"></div>'
+        + '</div>'
+        + '<span class="mood">'+(moodEmoji[e.mood]||'')+'</span>'
+        + '</div>';
+    }).join('') + '</div>';
+  }
+
+  function avg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+
+  function computeSuggestions(){
+    const dates = Object.keys(entries).sort().slice(-7); // up to last 7 logged days, oldest first
+    const sub = document.getElementById('suggestionsSub');
+    const list = document.getElementById('suggestionList');
+
+    if(dates.length < 3){
+      sub.style.display = 'block';
+      sub.textContent = 'Log a few more days (3+) to see personalized suggestions here.';
+      list.innerHTML = '';
+      return;
+    }
+    sub.style.display = 'none';
+
+    const work = dates.map(d=>entries[d].work||0);
+    const personal = dates.map(d=>entries[d].personal||0);
+    const sleep = dates.map(d=>entries[d].sleep||0);
+    const mood = dates.map(d=>entries[d].mood||null).filter(m=>m!==null);
+    const score = dates.map((d,i)=> (personal[i]+sleep[i]) - work[i]); // higher = more life-weighted
+
+    const mid = Math.floor(dates.length/2) || 1;
+    const firstHalf = (arr)=>arr.slice(0, mid);
+    const secondHalf = (arr)=>arr.slice(mid);
+
+    const dScore = avg(secondHalf(score)) - avg(firstHalf(score));
+    const dWork = avg(secondHalf(work)) - avg(firstHalf(work));
+    const dSleep = avg(secondHalf(sleep)) - avg(firstHalf(sleep));
+    const dPersonal = avg(secondHalf(personal)) - avg(firstHalf(personal));
+    const dMood = mood.length >= 3 ? (avg(secondHalf(mood)) - avg(firstHalf(mood))) : 0;
+
+    const suggestions = [];
+    const UP_T = 0.75, DOWN_T = -0.75; // thresholds in "hours" for score/work/sleep/personal
+
+    if(dScore >= UP_T){
+      // improving — credit the biggest positive driver
+      const drivers = [
+        { name:'cutting back on work hours', value: -dWork },
+        { name:'protecting more personal time', value: dPersonal },
+        { name:'getting more sleep', value: dSleep },
+      ].sort((a,b)=>b.value-a.value);
+      suggestions.push({
+        icon:'up',
+        text: "Your balance has been improving over the last " + dates.length + " days.",
+        tip: "Looks like " + drivers[0].name + " is helping most — worth keeping as a habit."
+      });
+    } else if(dScore <= DOWN_T){
+      const drivers = [
+        { name:'work hours creeping up', value: dWork, tip: 'Try setting a firm stop time for work this week.' },
+        { name:'sleep slipping', value: -dSleep, tip: 'Consider moving your wind-down 30 minutes earlier.' },
+        { name:'personal time shrinking', value: -dPersonal, tip: 'Block off even 20–30 minutes today for something just for you.' },
+      ].sort((a,b)=>b.value-a.value);
+      suggestions.push({
+        icon:'down',
+        text: "Your balance has been dipping over the last " + dates.length + " days — " + drivers[0].name + ".",
+        tip: drivers[0].tip
+      });
+    } else {
+      const healthy = avg(score) > 0;
+      suggestions.push({
+        icon:'flat',
+        text: healthy
+          ? "Your balance has stayed fairly steady and healthy this week."
+          : "Your balance has stayed steady, but on the tight side.",
+        tip: healthy
+          ? "Nice consistency — keep the current rhythm going."
+          : "Nothing's trending worse, but work has consistently outweighed rest. A reset day could help."
+      });
+    }
+
+    if(dMood <= -0.75){
+      suggestions.push({
+        icon:'down',
+        text: "Your mood has dipped a bit over the last few days.",
+        tip: "Even a short break, walk, or check-in with a friend can help reset things."
+      });
+    } else if(dMood >= 0.75){
+      suggestions.push({
+        icon:'up',
+        text: "Your mood has been trending up recently.",
+        tip: "Whatever's contributing to that, it's worth noticing and repeating."
+      });
+    }
+
+    list.innerHTML = suggestions.map(s=>{
+      const symbol = s.icon === 'up' ? '↑' : s.icon === 'down' ? '↓' : '→';
+      return '<div class="suggestion-item">'
+        + '<span class="sugg-icon ' + s.icon + '">' + symbol + '</span>'
+        + '<div><p>' + s.text + '</p><p class="tip">' + s.tip + '</p></div>'
+        + '</div>';
+    }).join('');
+  }
+
+  function renderNotifyUI(){
+    document.getElementById('reminderTime').value = settings.reminderTime || '18:00';
+    const btn = document.getElementById('notifyBtn');
+    const status = document.getElementById('notifyStatus');
+    if(settings.notificationsEnabled && Notification.permission === 'granted'){
+      btn.textContent = 'Turn off reminders';
+      status.textContent = 'Reminders are on for ' + settings.reminderTime;
+      status.classList.add('on');
+    } else {
+      btn.textContent = 'Turn on reminders';
+      status.textContent = 'Reminders are off';
+      status.classList.remove('on');
+    }
+  }
+
+  function updateHoursTotal(){
+    const work = parseFloat(document.getElementById('inputWork').value) || 0;
+    const personal = parseFloat(document.getElementById('inputPersonal').value) || 0;
+    const sleep = parseFloat(document.getElementById('inputSleep').value) || 0;
+    const total = work + personal + sleep;
+    const totalEl = document.getElementById('hoursTotal');
+    const errorEl = document.getElementById('hoursError');
+    totalEl.textContent = total.toFixed(1).replace(/\.0$/,'') + ' / 24 hours logged';
+    const over = total > 24;
+    totalEl.classList.toggle('over', over);
+    errorEl.classList.toggle('show', over);
+    return { work, personal, sleep, total, over };
+  }
+
+  async function handleSave(){
+    const { work, personal, sleep, over } = updateHoursTotal();
+    if(over){
+      document.getElementById('hoursError').classList.add('show');
+      return;
+    }
+    const exercise = parseFloat(document.getElementById('inputExercise').value) || 0;
+    const note = document.getElementById('inputNote').value.trim();
+    const targetDate = selectedEntryDate || todayStr();
+    const entry = { work, personal, sleep, exercise, note, mood: selectedMood, loggedAt: new Date().toISOString() };
+    entries[targetDate] = entry;
+    await saveEntries();
+    renderStreak();
+    renderHistory();
+    computeSuggestions();
+    renderAverages();
+    loadEntryFormForDate(targetDate); // refreshes balance card + backfill note (e.g. "already logged")
+    const msg = document.getElementById('saveMsg');
+    msg.textContent = targetDate === todayStr() ? 'Saved ✓' : 'Saved for ' + shortLabel(targetDate) + ' ✓';
+    msg.classList.add('show');
+    setTimeout(()=>msg.classList.remove('show'), 1800);
+  }
+
+  async function toggleNotifications(){
+    if(settings.notificationsEnabled){
+      settings.notificationsEnabled = false;
+      await saveSettings();
+      renderNotifyUI();
+      return;
+    }
+    if(!('Notification' in window)){
+      alert("This browser doesn't support notifications.");
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if(perm === 'granted'){
+      settings.notificationsEnabled = true;
+      settings.reminderTime = document.getElementById('reminderTime').value || '18:00';
+      await saveSettings();
+    } else {
+      alert('Notification permission was not granted, so reminders stay off.');
+    }
+    renderNotifyUI();
+  }
+
+  async function checkReminder(){
+    if(!settings.notificationsEnabled || Notification.permission !== 'granted') return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const current = hh + ':' + mm;
+    const target = settings.reminderTime || '18:00';
+    if(current >= target && settings.lastNotifiedDate !== todayStr() && !entries[todayStr()]){
+      try{
+        new Notification('Horizon check-in', { body: "You haven't logged today yet — take a moment to check in." });
+      }catch(e){}
+      settings.lastNotifiedDate = todayStr();
+      await saveSettings();
+    }
+  }
+
+  async function handleReset(){
+    if(!confirm('This will permanently delete all your logged entries and settings. Continue?')) return;
+    try{
+      await window.storage.delete(ENTRIES_KEY, false);
+      await window.storage.delete(SETTINGS_KEY, false);
+    }catch(e){}
+    entries = {};
+    settings = { reminderTime:'18:00', notificationsEnabled:false, lastNotifiedDate:null };
+    renderStreak(); renderHistory(); renderNotifyUI(); computeSuggestions(); renderAverages();
+    loadEntryFormForDate(todayStr());
+  }
+
+  function wireEvents(){
+    document.getElementById('saveBtn').addEventListener('click', handleSave);
+    ['inputWork','inputPersonal','inputSleep'].forEach(id=>{
+      document.getElementById(id).addEventListener('input', updateHoursTotal);
+    });
+    document.querySelectorAll('.mood-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        selectedMood = Number(btn.dataset.mood);
+        document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('selected', b===btn));
+      });
+    });
+    const dateInput = document.getElementById('entryDate');
+    dateInput.max = todayStr();
+    dateInput.addEventListener('change', (e)=>{
+      const val = e.target.value;
+      if(!val) return;
+      loadEntryFormForDate(val > todayStr() ? todayStr() : val);
+    });
+    document.getElementById('notifyBtn').addEventListener('click', toggleNotifications);
+    document.getElementById('reminderTime').addEventListener('change', async (e)=>{
+      settings.reminderTime = e.target.value;
+      if(settings.notificationsEnabled) await saveSettings();
+      renderNotifyUI();
+    });
+    document.getElementById('resetBtn').addEventListener('click', handleReset);
+    document.getElementById('avgRange').addEventListener('change', renderAverages);
+    setInterval(checkReminder, 30000);
+  }
+
+  async function init(){
+    await loadData();
+    renderStreak();
+    renderHistory();
+    renderNotifyUI();
+    computeSuggestions();
+    renderAverages();
+    wireEvents();
+    loadEntryFormForDate(todayStr());
+    setTimeout(checkReminder, 2000);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
