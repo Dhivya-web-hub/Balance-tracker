@@ -201,13 +201,85 @@
   .legend{display:flex; gap:16px; margin-top:14px; flex-wrap:wrap;}
   .legend span{font-size:12px; color:var(--slate); display:flex; align-items:center; gap:6px;}
 
-  footer.reset{text-align:center; margin-top:24px;}
+  footer.reset{text-align:center; margin-top:24px; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;}
   footer.reset button{font-size:12px; color:var(--slate); background:none; border:none; text-decoration:underline; cursor:pointer;}
 
   .loading-line{color:var(--slate); font-size:13px; padding:6px 0;}
+
+  /* ---------- Goals ---------- */
+  .goal-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;}
+  @media (max-width:560px){.goal-grid{grid-template-columns:1fr;}}
+  .goal-progress{margin-top:4px;}
+  .goal-item{margin-bottom:14px;}
+  .goal-item:last-child{margin-bottom:0;}
+  .goal-item .goal-label{display:flex; justify-content:space-between; font-size:12.5px; color:var(--slate); margin-bottom:6px;}
+  .goal-item .goal-label .status{font-weight:600;}
+  .goal-item .goal-label .status.met{color:var(--teal);}
+  .goal-item .goal-label .status.miss{color:var(--rose);}
+  .goal-bar-track{height:8px; border-radius:5px; background:#EEE; border:1px solid var(--line); overflow:hidden;}
+  .goal-bar-fill{height:100%; border-radius:5px; transition:width .4s ease;}
+  .goal-bar-fill.work{background:var(--teal);}
+  .goal-bar-fill.sleep{background:var(--indigo);}
+  .goal-empty{color:var(--slate); font-size:13px;}
+
+  /* ---------- Data controls ---------- */
+  .data-row{display:flex; gap:10px; flex-wrap:wrap;}
+
+  /* ---------- Login screen ---------- */
+  #loginScreen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px; background:var(--mist);
+  }
+  .login-card{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    border:1px solid var(--line); padding:32px 28px; width:100%; max-width:340px;
+  }
+  .login-card h1{
+    font-family:'Newsreader', serif; font-weight:500; font-size:28px; margin:0 0 4px; letter-spacing:-0.01em;
+  }
+  .login-card p.lead{color:var(--slate); font-size:13.5px; margin:0 0 20px;}
+  .login-card label{display:block; font-size:12.5px; color:var(--slate); font-weight:500; margin-bottom:6px;}
+  .login-card input[type=password]{
+    font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:10px 11px; background:#FCFDFC;
+    width:100%; margin-bottom:14px;
+  }
+  .login-card input[type=password]:focus{outline:2px solid var(--teal); outline-offset:1px;}
+  .login-card button.primary{width:100%; padding:11px 0;}
+  .login-error{
+    font-size:12.5px; color:var(--danger); background:var(--rose-soft);
+    border-radius:8px; padding:8px 12px; margin:0 0 14px; display:none;
+  }
+  .login-error.show{display:block;}
+  .login-note{font-size:11.5px; color:var(--slate); margin:16px 0 0; line-height:1.5;}
+  .login-forgot{margin-top:10px; text-align:center;}
+  .login-forgot button{
+    background:none; border:none; color:var(--slate); font-size:12px;
+    text-decoration:underline; cursor:pointer; font-family:'Inter',sans-serif;
+  }
+  #appRoot{display:none;}
 </style>
 </head>
 <body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>Horizon</h1>
+    <p class="lead" id="loginLead">Loading…</p>
+    <p class="login-error" id="loginError"></p>
+    <label for="loginPassword" id="loginPasswordLabel">Password</label>
+    <input type="password" id="loginPassword" autocomplete="off">
+    <label for="loginPasswordConfirm" id="loginConfirmLabel" style="display:none;">Confirm password</label>
+    <input type="password" id="loginPasswordConfirm" autocomplete="off" style="display:none;">
+    <button class="primary" id="loginSubmit">Unlock</button>
+    <div class="login-forgot" id="loginForgotWrap" style="display:none;">
+      <button id="loginForgot">Forgot password? Reset all data</button>
+    </div>
+    <p class="login-note">Stored only in this browser's Horizon data — there's no server, so this keeps casual visitors out but isn't strong security.</p>
+  </div>
+</div>
+
+<div id="appRoot">
 <div class="wrap">
 
   <header class="top">
@@ -341,6 +413,23 @@
     </div>
   </div>
 
+  <!-- Goals -->
+  <div class="card">
+    <h2>Your goals</h2>
+    <p class="sub">Set targets and see how today measures up.</p>
+    <div class="goal-grid">
+      <label class="field">
+        <span class="tag"><span class="dot work"></span>Max work hours</span>
+        <input type="number" id="goalWork" min="1" max="16" step="0.5" placeholder="8">
+      </label>
+      <label class="field">
+        <span class="tag"><span class="dot sleep"></span>Min sleep hours</span>
+        <input type="number" id="goalSleep" min="1" max="14" step="0.5" placeholder="7">
+      </label>
+    </div>
+    <div class="goal-progress" id="goalProgress"></div>
+  </div>
+
   <!-- History -->
   <div class="card">
     <h2>Your last 14 days</h2>
@@ -356,17 +445,23 @@
   </div>
 
   <footer class="reset">
+    <button id="exportBtn">Export my data</button>
+    <button id="importBtn">Import data</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none;">
     <button id="resetBtn">Clear all my data</button>
+    <button id="logoutBtn">Log out</button>
   </footer>
 
+</div>
 </div>
 
 <script>
 (function(){
   const ENTRIES_KEY = 'entries';
   const SETTINGS_KEY = 'settings';
+  const AUTH_KEY = 'authHash';
   let entries = {};
-  let settings = { reminderTime: '18:00', notificationsEnabled: false, lastNotifiedDate: null };
+  let settings = { reminderTime: '18:00', notificationsEnabled: false, lastNotifiedDate: null, goalWork: 8, goalSleep: 7 };
   let selectedMood = null;
   let selectedEntryDate = null; // the date the entry form is currently editing
 
@@ -390,7 +485,7 @@
     }catch(e){ entries = {}; }
     try{
       const res = await window.storage.get(SETTINGS_KEY, false);
-      settings = res ? JSON.parse(res.value) : settings;
+      settings = res ? Object.assign({}, settings, JSON.parse(res.value)) : settings;
     }catch(e){ /* keep defaults */ }
   }
 
@@ -511,6 +606,7 @@
       b.classList.toggle('selected', Number(b.dataset.mood) === selectedMood);
     });
     updateHoursTotal();
+    renderGoalsUI();
   }
 
   function renderStreak(){
@@ -645,6 +741,41 @@
     }).join('');
   }
 
+  function renderGoalsUI(){
+    document.getElementById('goalWork').value = settings.goalWork ?? 8;
+    document.getElementById('goalSleep').value = settings.goalSleep ?? 7;
+
+    const container = document.getElementById('goalProgress');
+    const dstr = selectedEntryDate || todayStr();
+    const entry = entries[dstr];
+    const goalWork = settings.goalWork ?? 8;
+    const goalSleep = settings.goalSleep ?? 7;
+
+    if(!entry){
+      container.innerHTML = '<p class="goal-empty">Log an entry to see how it compares to your goals.</p>';
+      return;
+    }
+
+    const work = entry.work || 0;
+    const sleep = entry.sleep || 0;
+    const workMet = work <= goalWork;
+    const sleepMet = sleep >= goalSleep;
+    const workPct = Math.min(100, (work / Math.max(goalWork, work, 0.1)) * 100);
+    const sleepPct = Math.min(100, (sleep / Math.max(goalSleep, 0.1)) * 100);
+
+    container.innerHTML =
+      '<div class="goal-item">'
+        + '<div class="goal-label"><span>Work: ' + work.toFixed(1).replace(/\.0$/,'') + 'h / ' + goalWork + 'h max</span>'
+        + '<span class="status ' + (workMet ? 'met' : 'miss') + '">' + (workMet ? 'On target' : 'Over') + '</span></div>'
+        + '<div class="goal-bar-track"><div class="goal-bar-fill work" style="width:' + workPct + '%"></div></div>'
+      + '</div>'
+      + '<div class="goal-item">'
+        + '<div class="goal-label"><span>Sleep: ' + sleep.toFixed(1).replace(/\.0$/,'') + 'h / ' + goalSleep + 'h min</span>'
+        + '<span class="status ' + (sleepMet ? 'met' : 'miss') + '">' + (sleepMet ? 'On target' : 'Under') + '</span></div>'
+        + '<div class="goal-bar-track"><div class="goal-bar-fill sleep" style="width:' + sleepPct + '%"></div></div>'
+      + '</div>';
+  }
+
   function renderNotifyUI(){
     document.getElementById('reminderTime').value = settings.reminderTime || '18:00';
     const btn = document.getElementById('notifyBtn');
@@ -735,6 +866,48 @@
     }
   }
 
+  function handleExport(){
+    const payload = { entries, settings, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'horizon-backup-' + todayStr() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImportClick(){
+    document.getElementById('importFile').click();
+  }
+
+  async function handleImportFile(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!data || typeof data.entries !== 'object'){
+        alert('This file doesn\'t look like a Horizon backup.');
+        return;
+      }
+      if(!confirm('Import this data? It will merge with (and overwrite conflicting days in) your current entries.')) return;
+      entries = Object.assign({}, entries, data.entries);
+      if(data.settings) settings = Object.assign({}, settings, data.settings);
+      await saveEntries();
+      await saveSettings();
+      renderStreak(); renderHistory(); renderNotifyUI(); computeSuggestions(); renderAverages();
+      loadEntryFormForDate(selectedEntryDate || todayStr());
+      alert('Import complete.');
+    }catch(err){
+      alert('Could not read that file — make sure it\'s a Horizon export.');
+    }finally{
+      e.target.value = '';
+    }
+  }
+
   async function handleReset(){
     if(!confirm('This will permanently delete all your logged entries and settings. Continue?')) return;
     try{
@@ -742,8 +915,8 @@
       await window.storage.delete(SETTINGS_KEY, false);
     }catch(e){}
     entries = {};
-    settings = { reminderTime:'18:00', notificationsEnabled:false, lastNotifiedDate:null };
-    renderStreak(); renderHistory(); renderNotifyUI(); computeSuggestions(); renderAverages();
+    settings = { reminderTime:'18:00', notificationsEnabled:false, lastNotifiedDate:null, goalWork:8, goalSleep:7 };
+    renderStreak(); renderHistory(); renderNotifyUI(); computeSuggestions(); renderAverages(); renderGoalsUI();
     loadEntryFormForDate(todayStr());
   }
 
@@ -773,6 +946,20 @@
     });
     document.getElementById('resetBtn').addEventListener('click', handleReset);
     document.getElementById('avgRange').addEventListener('change', renderAverages);
+    document.getElementById('goalWork').addEventListener('change', async (e)=>{
+      settings.goalWork = parseFloat(e.target.value) || 8;
+      await saveSettings();
+      renderGoalsUI();
+    });
+    document.getElementById('goalSleep').addEventListener('change', async (e)=>{
+      settings.goalSleep = parseFloat(e.target.value) || 7;
+      await saveSettings();
+      renderGoalsUI();
+    });
+    document.getElementById('exportBtn').addEventListener('click', handleExport);
+    document.getElementById('importBtn').addEventListener('click', handleImportClick);
+    document.getElementById('importFile').addEventListener('change', handleImportFile);
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{ location.reload(); });
     setInterval(checkReminder, 30000);
   }
 
@@ -783,12 +970,101 @@
     renderNotifyUI();
     computeSuggestions();
     renderAverages();
+    renderGoalsUI();
     wireEvents();
     loadEntryFormForDate(todayStr());
     setTimeout(checkReminder, 2000);
   }
 
-  init();
+  async function hashPassword(pw){
+    const enc = new TextEncoder().encode(pw);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function showApp(){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+    init();
+  }
+
+  function showLoginError(msg){
+    const err = document.getElementById('loginError');
+    err.textContent = msg;
+    err.classList.add('show');
+  }
+  function clearLoginError(){
+    document.getElementById('loginError').classList.remove('show');
+  }
+
+  async function handleLoginSubmit(hasPassword){
+    const pw = document.getElementById('loginPassword').value;
+    clearLoginError();
+    if(!pw){ showLoginError('Enter a password.'); return; }
+
+    if(!hasPassword){
+      const confirmPw = document.getElementById('loginPasswordConfirm').value;
+      if(pw.length < 4){ showLoginError('Use at least 4 characters.'); return; }
+      if(pw !== confirmPw){ showLoginError("Passwords don't match."); return; }
+      const hash = await hashPassword(pw);
+      try{ await window.storage.set(AUTH_KEY, hash, false); }
+      catch(e){ showLoginError('Could not save your password — try again.'); return; }
+      showApp();
+      return;
+    }
+
+    const stored = await window.storage.get(AUTH_KEY, false).catch(()=>null);
+    const hash = await hashPassword(pw);
+    if(stored && stored.value === hash){
+      showApp();
+    } else {
+      showLoginError('Incorrect password.');
+    }
+  }
+
+  async function handleForgotPassword(){
+    if(!confirm('This will permanently erase all your Horizon entries, settings, and your password so you can start over. Continue?')) return;
+    try{
+      await window.storage.delete(ENTRIES_KEY, false);
+      await window.storage.delete(SETTINGS_KEY, false);
+      await window.storage.delete(AUTH_KEY, false);
+    }catch(e){}
+    location.reload();
+  }
+
+  async function initAuth(){
+    let hasPassword = false;
+    try{
+      const stored = await window.storage.get(AUTH_KEY, false);
+      hasPassword = !!(stored && stored.value);
+    }catch(e){ hasPassword = false; }
+
+    const lead = document.getElementById('loginLead');
+    const confirmLabel = document.getElementById('loginConfirmLabel');
+    const confirmInput = document.getElementById('loginPasswordConfirm');
+    const forgotWrap = document.getElementById('loginForgotWrap');
+
+    if(hasPassword){
+      lead.textContent = 'Enter your password to continue.';
+      confirmLabel.style.display = 'none';
+      confirmInput.style.display = 'none';
+      forgotWrap.style.display = 'block';
+    } else {
+      lead.textContent = "First time here — set a password to protect your entries.";
+      confirmLabel.style.display = 'block';
+      confirmInput.style.display = 'block';
+      forgotWrap.style.display = 'none';
+    }
+
+    document.getElementById('loginSubmit').addEventListener('click', ()=>handleLoginSubmit(hasPassword));
+    [document.getElementById('loginPassword'), document.getElementById('loginPasswordConfirm')].forEach(el=>{
+      el.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') handleLoginSubmit(hasPassword); });
+    });
+    document.getElementById('loginForgot').addEventListener('click', handleForgotPassword);
+    document.getElementById('loginPassword').focus();
+  }
+
+  initAuth();
 })();
 </script>
 </body>
