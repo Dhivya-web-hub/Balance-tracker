@@ -460,6 +460,24 @@
   const ENTRIES_KEY = 'entries';
   const SETTINGS_KEY = 'settings';
   const AUTH_KEY = 'authHash';
+
+  // Real browser storage (works on any hosted site, e.g. GitHub Pages).
+  // Namespaced under 'horizon_' so it doesn't collide with anything else on the domain.
+  const storage = {
+    async get(key){
+      const raw = localStorage.getItem('horizon_' + key);
+      if(raw === null) return null;
+      return { key, value: raw };
+    },
+    async set(key, value){
+      localStorage.setItem('horizon_' + key, value);
+      return { key, value };
+    },
+    async delete(key){
+      localStorage.removeItem('horizon_' + key);
+      return { key, deleted: true };
+    }
+  };
   let entries = {};
   let settings = { reminderTime: '18:00', notificationsEnabled: false, lastNotifiedDate: null, goalWork: 8, goalSleep: 7 };
   let selectedMood = null;
@@ -480,21 +498,21 @@
 
   async function loadData(){
     try{
-      const res = await window.storage.get(ENTRIES_KEY, false);
+      const res = await storage.get(ENTRIES_KEY);
       entries = res ? JSON.parse(res.value) : {};
     }catch(e){ entries = {}; }
     try{
-      const res = await window.storage.get(SETTINGS_KEY, false);
+      const res = await storage.get(SETTINGS_KEY);
       settings = res ? Object.assign({}, settings, JSON.parse(res.value)) : settings;
     }catch(e){ /* keep defaults */ }
   }
 
   async function saveEntries(){
-    try{ await window.storage.set(ENTRIES_KEY, JSON.stringify(entries), false); }
+    try{ await storage.set(ENTRIES_KEY, JSON.stringify(entries)); }
     catch(e){ console.error('Could not save entries', e); }
   }
   async function saveSettings(){
-    try{ await window.storage.set(SETTINGS_KEY, JSON.stringify(settings), false); }
+    try{ await storage.set(SETTINGS_KEY, JSON.stringify(settings)); }
     catch(e){ console.error('Could not save settings', e); }
   }
 
@@ -911,8 +929,8 @@
   async function handleReset(){
     if(!confirm('This will permanently delete all your logged entries and settings. Continue?')) return;
     try{
-      await window.storage.delete(ENTRIES_KEY, false);
-      await window.storage.delete(SETTINGS_KEY, false);
+      await storage.delete(ENTRIES_KEY);
+      await storage.delete(SETTINGS_KEY);
     }catch(e){}
     entries = {};
     settings = { reminderTime:'18:00', notificationsEnabled:false, lastNotifiedDate:null, goalWork:8, goalSleep:7 };
@@ -1007,13 +1025,13 @@
       if(pw.length < 4){ showLoginError('Use at least 4 characters.'); return; }
       if(pw !== confirmPw){ showLoginError("Passwords don't match."); return; }
       const hash = await hashPassword(pw);
-      try{ await window.storage.set(AUTH_KEY, hash, false); }
+      try{ await storage.set(AUTH_KEY, hash); }
       catch(e){ showLoginError('Could not save your password — try again.'); return; }
       showApp();
       return;
     }
 
-    const stored = await window.storage.get(AUTH_KEY, false).catch(()=>null);
+    const stored = await storage.get(AUTH_KEY).catch(()=>null);
     const hash = await hashPassword(pw);
     if(stored && stored.value === hash){
       showApp();
@@ -1025,9 +1043,9 @@
   async function handleForgotPassword(){
     if(!confirm('This will permanently erase all your Horizon entries, settings, and your password so you can start over. Continue?')) return;
     try{
-      await window.storage.delete(ENTRIES_KEY, false);
-      await window.storage.delete(SETTINGS_KEY, false);
-      await window.storage.delete(AUTH_KEY, false);
+      await storage.delete(ENTRIES_KEY);
+      await storage.delete(SETTINGS_KEY);
+      await storage.delete(AUTH_KEY);
     }catch(e){}
     location.reload();
   }
@@ -1035,7 +1053,7 @@
   async function initAuth(){
     let hasPassword = false;
     try{
-      const stored = await window.storage.get(AUTH_KEY, false);
+      const stored = await storage.get(AUTH_KEY);
       hasPassword = !!(stored && stored.value);
     }catch(e){ hasPassword = false; }
 
